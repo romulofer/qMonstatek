@@ -6,7 +6,6 @@ add_library(qmonstatek_backend STATIC
     # Transport
     transport/abstract_transport.cpp
     transport/serial_transport.cpp
-    transport/tcp_transport.cpp
     transport/wifi_transport.cpp
     transport/network_worker.cpp
     transport/device_discovery.cpp

@@ -19,7 +19,6 @@
 #include "screen_buffer.h"
 #include "transport/abstract_transport.h"
 #include "transport/serial_transport.h"
-#include "transport/tcp_transport.h"
 #include "transport/wifi_transport.h"
 #include "transport/device_discovery.h"
 #include "transport/mdns_discovery.h"

@@ -20,6 +20,7 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QDebug>
+#include <QTimer>
 
 static constexpr int FLASH_BANK_SIZE = 0x100000;  // 1 MB
 
@@ -63,27 +64,43 @@ void SwdRecovery::resolveOpenOcdPaths()
 
 /*
  * Run `openocd --version` to capture the version string for diagnostics.
- * Non-blocking — runs synchronously with a short timeout since --version
- * returns instantly.
+ * Asynchronous: this runs from the constructor, so waiting on the process
+ * would block application startup (up to the timeout) for a log line.
  */
 void SwdRecovery::probeVersion()
 {
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(m_ocdPath, QStringList() << "--version");
-    if (proc.waitForFinished(3000)) {
-        QString output = QString::fromUtf8(proc.readAll()).trimmed();
-        // First line is typically "Open On-Chip Debugger 0.12.0 ..." or similar
-        QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-        if (!lines.isEmpty())
-            m_ocdVersion = lines.first().trimmed();
-    }
-    if (m_ocdVersion.isEmpty())
-        m_ocdVersion = "unknown";
-
     qInfo() << "SWD: OpenOCD =" << m_ocdPath;
     qInfo() << "SWD: Scripts =" << m_scriptsPath;
-    qInfo() << "SWD: Version =" << m_ocdVersion;
+
+    m_ocdVersion = "unknown";   // replaced when the probe reports
+
+    auto *proc = new QProcess(this);
+    proc->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, proc](int, QProcess::ExitStatus) {
+        const QString output = QString::fromUtf8(proc->readAll()).trimmed();
+        // First line is typically "Open On-Chip Debugger 0.12.0 ..." or similar
+        const QStringList lines = output.split('\n', Qt::SkipEmptyParts);
+        if (!lines.isEmpty())
+            m_ocdVersion = lines.first().trimmed();
+        qInfo() << "SWD: Version =" << m_ocdVersion;
+        proc->deleteLater();
+    });
+    connect(proc, &QProcess::errorOccurred, this,
+            [this, proc](QProcess::ProcessError err) {
+        if (err == QProcess::FailedToStart) {
+            qInfo() << "SWD: Version = unknown (openocd failed to start)";
+            proc->deleteLater();
+        }
+    });
+    // A hung binary must not linger forever.
+    QTimer::singleShot(3000, proc, [proc]() {
+        if (proc->state() != QProcess::NotRunning)
+            proc->kill();
+    });
+
+    proc->start(m_ocdPath, QStringList() << "--version");
 }
 
 /*

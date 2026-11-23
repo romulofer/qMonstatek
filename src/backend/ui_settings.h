@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QUrl>
+#include <QSettings>
 
 /*
  * UiSettings — small QSettings-backed store for UI state that should persist
@@ -49,6 +50,12 @@ public:
 
     bool guidedEspPending() const;
     void setGuidedEspPending(bool v);
+
+private:
+    /* One long-lived instance: theme/accent/etc. are read from many QML
+     * bindings, and constructing a QSettings per read re-resolves the backing
+     * store every time. Reads are served from its in-memory cache. */
+    mutable QSettings m_settings;
 
 signals:
     void themeChanged();

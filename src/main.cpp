@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QCommandLineParser>
 #include <QtQml>
+#include <QTimer>
 
 #include "device/m1_device.h"
 #include "device/screen_canvas.h"
@@ -43,7 +44,11 @@ static void msgHandler(QtMsgType type, const QMessageLogContext &ctx, const QStr
     // Write to log file
     if (s_logFile) {
         fprintf(s_logFile, "[%s] %s\n", tag, msg.toUtf8().constData());
-        fflush(s_logFile);
+        // Flush warnings and worse immediately so a crash keeps the evidence;
+        // routine lines are flushed by a timer in main() instead of one
+        // syscall per line.
+        if (type != QtDebugMsg && type != QtInfoMsg)
+            fflush(s_logFile);
     }
 
     // Feed the in-app log model
@@ -152,6 +157,13 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty()) {
         return -1;
     }
+
+    QTimer logFlushTimer;
+    QObject::connect(&logFlushTimer, &QTimer::timeout, &app, []() {
+        if (s_logFile)
+            fflush(s_logFile);
+    });
+    logFlushTimer.start(1000);
 
     return app.exec();
 }
