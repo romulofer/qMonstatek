@@ -35,7 +35,10 @@ BIN="$(find "$BUILD_DIR" -maxdepth 3 -name 'qmonstatek' -type f | head -1)"
 APPDIR="$BUILD_DIR/AppDir"
 rm -rf "$APPDIR"
 install -Dm755 "$BIN" "$APPDIR/usr/bin/qmonstatek"
-install -Dm644 "src/resources/icons/app_icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/qmonstatek.png"
+for icon in src/resources/icons/hicolor/*/qmonstatek.png; do
+    size="$(basename "$(dirname "$icon")")"
+    install -Dm644 "$icon" "$APPDIR/usr/share/icons/hicolor/$size/apps/qmonstatek.png"
+done
 cat > "$APPDIR/qmonstatek.desktop" <<EOF
 [Desktop Entry]
 Type=Application

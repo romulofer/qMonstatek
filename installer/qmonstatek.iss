@@ -38,7 +38,7 @@ UsePreviousAppDir=yes
 ; Minimum Windows 10
 MinVersion=10.0
 UninstallDisplayName={#MyAppName}
-SetupIconFile=qmonstatek.ico
+SetupIconFile=..\src\resources\icons\qmonstatek.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

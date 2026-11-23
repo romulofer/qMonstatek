@@ -1,10 +1,10 @@
 #!/bin/bash
-# Generate qmonstatek.icns from app_icon.png (run on macOS only)
+# Generate qmonstatek.icns from app_icon_1024.png (run on macOS only)
 # Requires: sips, iconutil (built into macOS)
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SRC="$SCRIPT_DIR/app_icon.png"
+SRC="$SCRIPT_DIR/app_icon_1024.png"
 ICONSET="$SCRIPT_DIR/qmonstatek.iconset"
 
 mkdir -p "$ICONSET"

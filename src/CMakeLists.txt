@@ -46,7 +46,6 @@ qt_add_resources(qmonstatek "app_resources"
     BASE resources
     FILES
         resources/icons/app_icon.png
-        resources/icons/qmonstatek.ico
         resources/images/enter_dfu.png
         resources/images/reboot_device.png
         resources/images/swd_recovery.png
@@ -95,3 +94,11 @@ install(TARGETS qmonstatek
     RUNTIME DESTINATION bin
     BUNDLE DESTINATION .
 )
+
+if(UNIX AND NOT APPLE)
+    install(FILES resources/linux/qmonstatek.desktop DESTINATION share/applications)
+    foreach(size 16 32 48 64 128 256 512)
+        install(FILES resources/icons/hicolor/${size}x${size}/qmonstatek.png
+                DESTINATION share/icons/hicolor/${size}x${size}/apps)
+    endforeach()
+endif()
