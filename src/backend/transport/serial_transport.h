@@ -32,6 +32,7 @@ private slots:
 
 private:
     QSerialPort m_port;
+    bool        m_opening = false;   // open() reports its own failure; ignore onError during it
 };
 
 #endif // SERIAL_TRANSPORT_H

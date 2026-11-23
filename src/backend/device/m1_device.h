@@ -246,6 +246,7 @@ private slots:
     void onWifiScreenFrame(const QImage &image);   // pushed from the worker thread
     void onInboundActivity();                       // any inbound WiFi byte (liveness)
     void tryWifiReconnect();
+    void onTransportError(const QString &message);
 
 private:
     void trySerialReconnect();
@@ -311,6 +312,10 @@ private:
     QTimer   m_serialReconnectTimer;
     QString  m_serialReconnectPort;
     int      m_serialReconnectAttempts = 0;
+    // Automatic (re)open attempts retry on their own, so their per-attempt errors
+    // are held back and reported once if the retries are exhausted.
+    bool     m_quietTransportErrors = false;
+    QString  m_lastReconnectError;
 
     /* Latest finished (upscaled) screen frame — pushed to QML and used by
      * screenshot save. Decoded on the worker thread for WiFi, on the GUI

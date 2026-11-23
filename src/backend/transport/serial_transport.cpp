@@ -38,7 +38,10 @@ bool SerialTransport::open(const QString &portName)
     m_port.setStopBits(QSerialPort::OneStop);
     m_port.setFlowControl(QSerialPort::NoFlowControl);
 
-    if (!m_port.open(QIODevice::ReadWrite)) {
+    m_opening = true;
+    const bool opened = m_port.open(QIODevice::ReadWrite);
+    m_opening = false;
+    if (!opened) {
         QString err = QString("Failed to open %1: %2")
                           .arg(portName, m_port.errorString());
 #ifdef Q_OS_LINUX
@@ -50,6 +53,11 @@ bool SerialTransport::open(const QString &portName)
             err += QString("\n\nOn Linux, serial ports require group membership. Run:\n"
                            "  sudo usermod -aG %1 $USER\n"
                            "then log out and back in.").arg(group);
+        } else if (m_port.error() == QSerialPort::PermissionError) {
+            // The node is writable, so the "permission" error is the port lock:
+            // something else already has it open.
+            err += "\n\nThe port is in use by another program (another qMonstatek "
+                   "window, qMonstatek Studio, or ModemManager). Close it and try again.";
         }
 #endif
         qWarning() << err;
@@ -112,6 +120,11 @@ void SerialTransport::onReadyRead()
 void SerialTransport::onError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::NoError) {
+        return;
+    }
+
+    // A failed open() raises this signal too; open() already reports it once.
+    if (m_opening) {
         return;
     }
 

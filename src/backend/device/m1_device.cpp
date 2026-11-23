@@ -369,7 +369,16 @@ void M1Device::setTransport(AbstractTransport *transport)
     connect(m_transport, &AbstractTransport::connectionChanged,
             this, &M1Device::onTransportConnected);
     connect(m_transport, &AbstractTransport::errorOccurred,
-            this, &M1Device::errorOccurred);
+            this, &M1Device::onTransportError);
+}
+
+void M1Device::onTransportError(const QString &message)
+{
+    if (m_quietTransportErrors) {
+        m_lastReconnectError = message;
+        return;
+    }
+    emit errorOccurred(message);
 }
 
 void M1Device::startSession()
@@ -1924,7 +1933,11 @@ void M1Device::onDeviceFound(const QString &portName)
     }
 
     qInfo() << "Auto-connecting to" << portName;
-    if (!connectToDevice(portName)) {
+    m_quietTransportErrors = true;
+    m_lastReconnectError.clear();
+    const bool opened = connectToDevice(portName);
+    m_quietTransportErrors = false;
+    if (!opened) {
         m_serialReconnectAttempts = 0;
         scheduleSerialReconnect(portName, 750);
     }
@@ -1948,6 +1961,11 @@ void M1Device::trySerialReconnect()
     if (m_serialReconnectAttempts >= SERIAL_RECONNECT_MAX) {
         qWarning() << "USB reconnect gave up after" << m_serialReconnectAttempts
                    << "attempts on" << m_serialReconnectPort;
+        // The per-attempt errors were held back; say it once, with the last cause.
+        emit errorOccurred(QString("Could not connect to %1 after %2 attempts.\n%3")
+                               .arg(m_serialReconnectPort)
+                               .arg(m_serialReconnectAttempts)
+                               .arg(m_lastReconnectError));
         m_serialReconnectPort.clear();
         return;
     }
@@ -1955,7 +1973,11 @@ void M1Device::trySerialReconnect()
     ++m_serialReconnectAttempts;
     qInfo() << "USB reconnect attempt" << m_serialReconnectAttempts
             << "on" << m_serialReconnectPort;
-    if (connectToDevice(m_serialReconnectPort))
+    m_quietTransportErrors = true;
+    m_lastReconnectError.clear();
+    const bool opened = connectToDevice(m_serialReconnectPort);
+    m_quietTransportErrors = false;
+    if (opened)
         return;
 
     const int delay = qMin(2000, 500 << qMin(m_serialReconnectAttempts - 1, 2));
