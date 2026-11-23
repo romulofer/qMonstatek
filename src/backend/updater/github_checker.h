@@ -10,6 +10,7 @@
 
 #include <QObject>
 #include <QNetworkAccessManager>
+#include <QHash>
 #include <QNetworkReply>
 #include <QString>
 #include <QUrl>
@@ -70,6 +71,14 @@ public:
                                 int &major, int &minor, int &build, int &rc,
                                 int &c3Rev);
 
+    /**
+     * Check `data` against a GitHub asset digest of the form "sha256:<hex>".
+     * An empty digest means the release published none: returns true. An
+     * unsupported algorithm returns true too (nothing to verify against). Only
+     * a well-formed sha256 digest that does not match returns false.
+     */
+    static bool digestMatches(const QByteArray &data, const QString &digest);
+
 signals:
     /**
      * Emitted when a newer release is found.
@@ -106,10 +115,14 @@ private slots:
     void onDownloadReply(QNetworkReply *reply);
 
 private:
+    void startDownload(const QUrl &url, const QString &destPath, const QString &digest);
+
     QNetworkAccessManager m_nam;
     QString m_repoUrl = "bedge117/M1";
     QString m_persistKey;
     QString m_downloadDest;
+    QString m_downloadDigest;                 // "sha256:<hex>" for the download in flight
+    QHash<QString, QString> m_assetDigests;   // downloadUrl -> digest, from the last release
     bool    m_checking = false;
 
     // Current device version (set at check time)

@@ -16,6 +16,10 @@
 #include <QCryptographicHash>
 #include <QSslSocket>
 
+// Abort requests that stall instead of leaving the UI waiting indefinitely.
+static constexpr int kApiTimeoutMs      = 30000;
+static constexpr int kDownloadTimeoutMs = 120000;
+
 GithubChecker::GithubChecker(QObject *parent)
     : QObject(parent)
 {
@@ -138,6 +142,8 @@ void GithubChecker::checkForUpdates(int fwMajor, int fwMinor,
     QNetworkRequest req{QUrl(apiUrl)};
     req.setHeader(QNetworkRequest::UserAgentHeader, "qMonstatek/1.0");
     req.setRawHeader("Accept", "application/vnd.github.v3+json");
+    // Without a timeout a stalled connection leaves the UI "checking" forever.
+    req.setTransferTimeout(kApiTimeoutMs);
 
     QNetworkReply *reply = m_nam.get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
@@ -218,6 +224,7 @@ void GithubChecker::onReleaseReply(QNetworkReply *reply)
 
     // Parse assets
     QJsonArray assets;
+    m_assetDigests.clear();
     QJsonArray assetsArr = root["assets"].toArray();
     for (const auto &assetVal : assetsArr) {
         QJsonObject asset = assetVal.toObject();
@@ -226,6 +233,10 @@ void GithubChecker::onReleaseReply(QNetworkReply *reply)
         a["size"]        = asset["size"].toInt();
         a["downloadUrl"] = asset["browser_download_url"].toString();
         a["contentType"] = asset["content_type"].toString();
+        // GitHub publishes "sha256:<hex>" for assets; verified after download.
+        a["digest"]      = asset["digest"].toString();
+        if (!a["digest"].toString().isEmpty())
+            m_assetDigests.insert(a["downloadUrl"].toString(), a["digest"].toString());
         assets.append(a);
     }
     info["assets"] = assets;
@@ -247,8 +258,26 @@ bool GithubChecker::saveFileTo(const QString &src, const QString &dest)
     return QFile::copy(src, dest);
 }
 
+bool GithubChecker::digestMatches(const QByteArray &data, const QString &digest)
+{
+    const QString d = digest.trimmed();
+    if (!d.startsWith(QLatin1String("sha256:"), Qt::CaseInsensitive))
+        return true;   // none published, or an algorithm we don't verify
+    const QByteArray expected = d.mid(7).trimmed().toLower().toLatin1();
+    const QByteArray actual =
+        QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex();
+    return expected == actual;
+}
+
 void GithubChecker::downloadAsset(const QUrl &url, const QString &destPath)
 {
+    startDownload(url, destPath, m_assetDigests.value(url.toString()));
+}
+
+void GithubChecker::startDownload(const QUrl &url, const QString &destPath,
+                                  const QString &digest)
+{
+    m_downloadDigest = digest;
     // If destPath is just a filename (no directory separator), put it in
     // the system temp directory so we don't need write access to Program Files.
     if (!destPath.contains('/') && !destPath.contains('\\')) {
@@ -259,6 +288,7 @@ void GithubChecker::downloadAsset(const QUrl &url, const QString &destPath)
 
     QNetworkRequest req{url};
     req.setHeader(QNetworkRequest::UserAgentHeader, "qMonstatek/1.0");
+    req.setTransferTimeout(kDownloadTimeoutMs);
 
     QNetworkReply *reply = m_nam.get(req);
 
@@ -287,11 +317,22 @@ void GithubChecker::onDownloadReply(QNetworkReply *reply)
     QUrl redirect = reply->attribute(
         QNetworkRequest::RedirectionTargetAttribute).toUrl();
     if (redirect.isValid()) {
-        downloadAsset(redirect, m_downloadDest);
+        // Keep the digest: it belongs to the asset, not to the redirect target.
+        startDownload(redirect, m_downloadDest, m_downloadDigest);
         return;
     }
 
     QByteArray data = reply->readAll();
+
+    if (!digestMatches(data, m_downloadDigest)) {
+        qWarning() << "Download integrity check failed for" << m_downloadDest
+                   << "expected" << m_downloadDigest;
+        emit downloadError("Integrity check failed: the downloaded file does not match "
+                           "the checksum published by the release. It was discarded.");
+        return;
+    }
+    if (m_downloadDigest.isEmpty())
+        qInfo() << "Download has no published checksum; integrity not verified:" << m_downloadDest;
 
     // Clean up any previous firmware downloads in temp
     QFileInfo destInfo(m_downloadDest);
