@@ -13,7 +13,9 @@
 #   5. Zips the installer (avoids Windows Mark of the Web blocking)
 #   6. Output: installer_output/qMonstatek_v{VERSION}_setup.zip
 
-set -e
+# pipefail: the build and installer steps are piped through `tail`; without it
+# a failing make/ISCC would be masked and a stale binary packaged.
+set -eo pipefail
 
 # Resolve paths relative to this script's location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,7 +54,12 @@ echo "  .iss:           $(grep '#define MyAppVersion' "$ISS_FILE" | xargs)"
 # ── 2. Build ──
 echo "[2/6] Building qMonstatek..."
 cd "$BUILD_DIR"
+rm -f "$BUILD_DIR/src/qmonstatek.exe"   # never package a stale binary
 "$MAKE" -j8 2>&1 | tail -5
+if [ ! -f "$BUILD_DIR/src/qmonstatek.exe" ]; then
+    echo "ERROR: build did not produce qmonstatek.exe"
+    exit 1
+fi
 echo "  Build complete."
 
 # ── 3. Deploy exe ──
@@ -67,9 +74,10 @@ if [ ! -f "$ISCC" ]; then
     exit 1
 fi
 
+SETUP_EXE="$OUT_DIR/qMonstatek_v${VERSION}_setup.exe"
+rm -f "$SETUP_EXE"   # a leftover installer from a previous run must not pass the check below
 "$ISCC" "$ISS_FILE" 2>&1 | tail -5
 
-SETUP_EXE="$OUT_DIR/qMonstatek_v${VERSION}_setup.exe"
 if [ ! -f "$SETUP_EXE" ]; then
     echo "ERROR: Installer not found at: $SETUP_EXE"
     exit 1
