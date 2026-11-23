@@ -428,7 +428,7 @@ Item {
                 }
 
                 Label {
-                    text: "<a href='z'>Download Zadig (zadig.akeo.ie)</a>"
+                    text: "<a href='z' style='color:" + root.linkHex + "'>Download Zadig (zadig.akeo.ie)</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 16
                     linkColor: "#8FCBFF"; font.bold: true
@@ -656,7 +656,7 @@ Item {
                     font.pixelSize: 12
                 }
                 Label {
-                    text: "<a href='gh'>View this release on GitHub</a>"
+                    text: "<a href='gh' style='color:" + root.linkHex + "'>View this release on GitHub</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 16
                     linkColor: "#8FCBFF"; font.bold: true
@@ -759,7 +759,7 @@ Item {
                 spacing: 26
 
                 Label {
-                    text: "<a href='dfu'>What is DFU?</a>"
+                    text: "<a href='dfu' style='color:" + root.linkHex + "'>What is DFU?</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -767,7 +767,7 @@ Item {
                     MouseArea { anchors.fill: parent; acceptedButtons: Qt.NoButton; cursorShape: Qt.PointingHandCursor }
                 }
                 Label {
-                    text: "<a href='enter'>How to enter DFU mode</a>"
+                    text: "<a href='enter' style='color:" + root.linkHex + "'>How to enter DFU mode</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -775,7 +775,7 @@ Item {
                     MouseArea { anchors.fill: parent; acceptedButtons: Qt.NoButton; cursorShape: Qt.PointingHandCursor }
                 }
                 Label {
-                    text: "<a href='trouble'>Troubleshooting</a>"
+                    text: "<a href='trouble' style='color:" + root.linkHex + "'>Troubleshooting</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -864,7 +864,7 @@ Item {
                         spacing: 24
 
                         Label {
-                            text: "<a href='cube'>Get STM32CubeProgrammer</a>"
+                            text: "<a href='cube' style='color:" + root.linkHex + "'>Get STM32CubeProgrammer</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 15
                             linkColor: "#8FCBFF"; font.bold: true
@@ -873,7 +873,7 @@ Item {
                         }
                         Label {
                             visible: Qt.platform.os === "windows"
-                            text: "<a href='zadig'>Windows USB driver setup</a>"
+                            text: "<a href='zadig' style='color:" + root.linkHex + "'>Windows USB driver setup</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 15
                             linkColor: "#8FCBFF"; font.bold: true
@@ -882,7 +882,7 @@ Item {
                         }
                         Label {
                             visible: Qt.platform.os === "linux"
-                            text: "<a href='udev'>Linux USB permissions</a>"
+                            text: "<a href='udev' style='color:" + root.linkHex + "'>Linux USB permissions</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 15
                             linkColor: "#8FCBFF"; font.bold: true
@@ -1068,7 +1068,7 @@ Item {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "<a href='notes'>Release Notes</a>"
+                            text: "<a href='notes' style='color:" + root.linkHex + "'>Release Notes</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 16
                             linkColor: "#8FCBFF"; font.bold: true
@@ -1237,7 +1237,7 @@ Item {
                     }
 
                     Label {
-                        text: "<a href='bank'>What's a flash bank?</a>"
+                        text: "<a href='bank' style='color:" + root.linkHex + "'>What's a flash bank?</a>"
                         textFormat: Text.RichText
                         font.pixelSize: 15
                         linkColor: "#8FCBFF"; font.bold: true

@@ -287,7 +287,7 @@ Item {
                     Layout.fillWidth: true; spacing: 12
                     Label { text: "Pico → OpenOCD"; font.pixelSize: 13; font.bold: true }
                     Label {
-                        text: "<a href='ide'>Get STM32CubeIDE (includes OpenOCD)</a>"
+                        text: "<a href='ide' style='color:" + root.linkHex + "'>Get STM32CubeIDE (includes OpenOCD)</a>"
                         textFormat: Text.RichText; font.pixelSize: 14
                         linkColor: "#8FCBFF"; font.bold: true
                         onLinkActivated: Qt.openUrlExternally("https://www.st.com/en/development-tools/stm32cubeide.html")
@@ -305,7 +305,7 @@ Item {
                     Layout.fillWidth: true; spacing: 12
                     Label { text: "ST-Link → STM32CubeProgrammer"; font.pixelSize: 13; font.bold: true }
                     Label {
-                        text: "<a href='cube'>Get STM32CubeProgrammer</a>"
+                        text: "<a href='cube' style='color:" + root.linkHex + "'>Get STM32CubeProgrammer</a>"
                         textFormat: Text.RichText; font.pixelSize: 14
                         linkColor: "#8FCBFF"; font.bold: true
                         onLinkActivated: Qt.openUrlExternally("https://www.st.com/en/development-tools/stm32cubeprog.html")
@@ -320,7 +320,7 @@ Item {
                 Label { text: "Raspberry Pi Pico (CMSIS-DAP)"; font.bold: true; font.pixelSize: 15 }
 
                 Label {
-                    text: "<a href='pico'>Download debugprobe_on_pico.uf2</a>"
+                    text: "<a href='pico' style='color:" + root.linkHex + "'>Download debugprobe_on_pico.uf2</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -548,7 +548,7 @@ Item {
                 spacing: 26
 
                 Label {
-                    text: "<a href='s'>What is SWD?</a>"
+                    text: "<a href='s' style='color:" + root.linkHex + "'>What is SWD?</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -556,7 +556,7 @@ Item {
                     MouseArea { anchors.fill: parent; acceptedButtons: Qt.NoButton; cursorShape: Qt.PointingHandCursor }
                 }
                 Label {
-                    text: "<a href='w'>Wiring & pin diagram</a>"
+                    text: "<a href='w' style='color:" + root.linkHex + "'>Wiring & pin diagram</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -564,7 +564,7 @@ Item {
                     MouseArea { anchors.fill: parent; acceptedButtons: Qt.NoButton; cursorShape: Qt.PointingHandCursor }
                 }
                 Label {
-                    text: "<a href='p'>Probe setup</a>"
+                    text: "<a href='p' style='color:" + root.linkHex + "'>Probe setup</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -572,7 +572,7 @@ Item {
                     MouseArea { anchors.fill: parent; acceptedButtons: Qt.NoButton; cursorShape: Qt.PointingHandCursor }
                 }
                 Label {
-                    text: "<a href='t'>Troubleshooting</a>"
+                    text: "<a href='t' style='color:" + root.linkHex + "'>Troubleshooting</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 15
                     linkColor: "#8FCBFF"; font.bold: true
@@ -801,7 +801,7 @@ Item {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "<a href='notes'>Release Notes</a>"
+                            text: "<a href='notes' style='color:" + root.linkHex + "'>Release Notes</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 16
                             linkColor: "#8FCBFF"; font.bold: true
@@ -883,7 +883,7 @@ Item {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "<a href='bank'>What's a flash bank?</a>"
+                            text: "<a href='bank' style='color:" + root.linkHex + "'>What's a flash bank?</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 15
                             linkColor: "#8FCBFF"; font.bold: true
@@ -1134,7 +1134,7 @@ Item {
                     color: Material.hintTextColor; font.pixelSize: 12
                 }
                 Label {
-                    text: "<a href='gh'>View this release on GitHub</a>"
+                    text: "<a href='gh' style='color:" + root.linkHex + "'>View this release on GitHub</a>"
                     textFormat: Text.RichText
                     font.pixelSize: 16
                     linkColor: "#8FCBFF"; font.bold: true

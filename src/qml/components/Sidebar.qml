@@ -67,16 +67,16 @@ Rectangle {
         // Shown only when there's no usable device (disconnected or incompatible FW),
         // so the connect/instructions screen is always reachable again after the
         // user navigates away to Settings/About/etc.
-        { name: "connect",        label: "Connect Device",  icon: "🔌", section: "",         requires: "noDevice" },
+        { name: "connect",        label: "Connect Device",  icon: "⌁", section: "",         requires: "noDevice" },
         { name: "deviceInfo",     label: "Device Info",     icon: "ℹ",  section: "",         requires: "compatible" },
         // Screen Mirror folded into Device Info (Start Stream there). View kept at
         // contentStack index 1 (unlinked) so it's trivially restorable.
-        { name: "fileManager",    label: "File Manager",    icon: "📁", section: "",         requires: "compatible" },
+        { name: "fileManager",    label: "File Manager",    icon: "☰", section: "",         requires: "compatible" },
         { name: "firmwareUpdate", label: "Firmware Update", icon: "⬆", section: "Firmware", requires: "compatible" },
-        { name: "dualBoot",       label: "Dual Boot",    icon: "🔄", section: "",         requires: "compatible" },
-        { name: "factoryRestore", label: "Factory Restore", icon: "🏭", section: "",      requires: "compatible" },
+        { name: "dualBoot",       label: "Dual Boot",    icon: "⇄", section: "",         requires: "compatible" },
+        { name: "factoryRestore", label: "Factory Restore", icon: "♻", section: "",      requires: "compatible" },
         { name: "dfuFlash",      label: "DFU Flash",        icon: "⚡", section: "Recovery", requires: "recovery" },
-        { name: "swdRecovery",  label: "SWD Flash",        icon: "🔧", section: "",         requires: "recovery" },
+        { name: "swdRecovery",  label: "SWD Flash",        icon: "⚒", section: "",         requires: "recovery" },
         { name: "debugTerminal", label: "Debug Terminal",    icon: ">",  section: "System",   requires: "none" },
         { name: "settings",      label: "Settings",         icon: "⚙", section: "",         requires: "none" },
         { name: "power",        label: "Power",            icon: "⏻", section: "",         requires: "compatible" },

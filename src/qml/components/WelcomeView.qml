@@ -84,7 +84,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 6
                     Label {
-                        text: "✨"
+                        text: "✦"
                         font.pixelSize: 13
                         SequentialAnimation on opacity {
                             loops: Animation.Infinite; running: true
@@ -190,7 +190,7 @@ Item {
 
                     RowLayout {
                         spacing: 8
-                        Label { text: "🎉"; font.pixelSize: 16 }
+                        Label { text: "★"; font.pixelSize: 16 }
                         Label {
                             text: "What's new in this update"
                             font.pixelSize: 15; font.bold: true

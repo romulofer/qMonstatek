@@ -138,7 +138,7 @@ ScrollView {
                 // connection, not a separate mobile app.
                 visible: m1device.connected && m1device.mobileLinkActive
                          && m1device.connectionType === "USB"
-                text: "📱  Also connected to the mobile app over WiFi"
+                text: "✆  Also connected to the mobile app over WiFi"
                 font.pixelSize: 11
                 color: "#4CAF50"
                 horizontalAlignment: Text.AlignHCenter
@@ -287,7 +287,7 @@ ScrollView {
             RowLayout {
                 anchors.fill: parent
                 spacing: 12
-                Label { text: "🔌"; font.pixelSize: 18 }
+                Label { text: "⌁"; font.pixelSize: 18 }
                 ColumnLayout {
                     spacing: 2
                     Layout.fillWidth: true

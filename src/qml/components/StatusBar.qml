@@ -239,7 +239,7 @@ ToolBar {
             spacing: 4
 
             Label {
-                text: m1device.batteryCharging ? "⚡" : "🔋"
+                text: m1device.batteryCharging ? "⚡" : "▮"
                 font.pixelSize: 14
             }
             Label {
@@ -251,7 +251,7 @@ ToolBar {
         // SD card indicator
         Label {
             visible: m1device.connected && m1device.sdCardPresent
-            text: "💾 SD"
+            text: "▤ SD"
             font.pixelSize: 12
             Layout.leftMargin: 12
         }
@@ -259,7 +259,7 @@ ToolBar {
         // ESP32 indicator
         Label {
             visible: m1device.connected
-            text: m1device.esp32Ready ? "📡 ESP OK" : "📡 ESP ✗"
+            text: m1device.esp32Ready ? "≋ ESP OK" : "≋ ESP ✗"
             font.pixelSize: 12
             color: m1device.esp32Ready ? Material.foreground : "#F44336"
             Layout.leftMargin: 12

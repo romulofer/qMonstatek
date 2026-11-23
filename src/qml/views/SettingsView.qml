@@ -286,7 +286,7 @@ Item {
                                 spacing: 16
 
                                 Label {
-                                    text: "<a href='notes'>Release notes</a>"
+                                    text: "<a href='notes' style='color:" + root.linkHex + "'>Release notes</a>"
                                     textFormat: Text.RichText
                                     font.pixelSize: 11
                                     linkColor: "#8FCBFF"
@@ -516,7 +516,7 @@ Item {
                         Layout.leftMargin: 24
                         spacing: 16
                         Label {
-                            text: "<a href='notes'>Release notes</a>"
+                            text: "<a href='notes' style='color:" + root.linkHex + "'>Release notes</a>"
                             textFormat: Text.RichText
                             font.pixelSize: 11
                             linkColor: "#8FCBFF"

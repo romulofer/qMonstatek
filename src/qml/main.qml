@@ -14,6 +14,9 @@ ApplicationWindow {
     visible: true
     title: "qMonstatek" + (m1device.connected ? " — " + m1device.portName : "")
     
+    // Hyperlink colour for rich-text labels. Qt 6.4 ignores Text.linkColor in
+    // rich text, so links fell back to default dark blue (unreadable on dark).
+    readonly property string linkHex: Material.theme === Material.Dark ? "#8FCBFF" : "#0B5CAD"
     property string filePathFilter: Qt.platform.os === "windows" ? "file:///" : "file://"
     // Convert a FileDialog URL to a local path. The URL is percent-encoded, so
     // "my file.bin" arrives as "my%20file.bin" and must be decoded.
@@ -243,7 +246,10 @@ ApplicationWindow {
     Material.theme: (uiSettings.theme === "light" || uiSettings.theme === "chrome")
                     ? Material.Light : Material.Dark
     Material.accent: uiSettings.theme === "hacker" ? "#00E676" : root.accentColor
-    Material.primary: uiSettings.theme === "hacker" ? "#0B0F0B" : Material.BlueGrey
+    // Dark: a deep blue-grey so white text and the green "Open Studio" outline keep
+    // their contrast (stock BlueGrey 500 is too light for either).
+    Material.primary: uiSettings.theme === "hacker" ? "#0B0F0B"
+                      : (Material.theme === Material.Dark ? "#2B3A42" : Material.BlueGrey)
     Material.background: {
         switch (uiSettings.theme) {
         case "chrome": return "#C6CBD3"    // silvery — like Light, pulled back from white

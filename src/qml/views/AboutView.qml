@@ -73,19 +73,19 @@ Item {
             columnSpacing: 24
             rowSpacing: 8
 
-            Label { text: "🖥  Screen Mirror"; font.pixelSize: 13 }
+            Label { text: "▭  Screen Mirror"; font.pixelSize: 13 }
             Label { text: "Live display streaming + remote control"; font.pixelSize: 11; color: Material.hintTextColor }
 
             Label { text: "⬆  Firmware Update"; font.pixelSize: 13 }
             Label { text: "Update from GitHub or local file"; font.pixelSize: 11; color: Material.hintTextColor }
 
-            Label { text: "📁  File Manager"; font.pixelSize: 13 }
+            Label { text: "☰  File Manager"; font.pixelSize: 13 }
             Label { text: "Browse, upload, download SD card files"; font.pixelSize: 11; color: Material.hintTextColor }
 
-            Label { text: "🔄  Dual Boot"; font.pixelSize: 13 }
+            Label { text: "⇄  Dual Boot"; font.pixelSize: 13 }
             Label { text: "Manage flash banks, swap, rollback"; font.pixelSize: 11; color: Material.hintTextColor }
 
-            Label { text: "📡  ESP32 Update"; font.pixelSize: 13 }
+            Label { text: "≋  ESP32 Update"; font.pixelSize: 13 }
             Label { text: "Flash ESP32-C6 coprocessor firmware"; font.pixelSize: 11; color: Material.hintTextColor }
         }
 
