@@ -1,5 +1,7 @@
 #include <QtTest>
 #include <QCryptographicHash>
+#include <QTemporaryDir>
+#include <QFile>
 #include "updater/github_checker.h"
 
 class TestGithubChecker : public QObject {
@@ -40,6 +42,28 @@ private slots:
         int a, b, c, d, e;
         QVERIFY(!GithubChecker::parseVersionTag("latest", a, b, c, d, e));
         QVERIFY(!GithubChecker::parseVersionTag("", a, b, c, d, e));
+    }
+
+    void md5VerifyMatchAndMismatch()
+    {
+        QTemporaryDir dir;
+        const QString bin = dir.filePath("fw.bin");
+        const QString md5 = dir.filePath("fw.md5");
+        QFile b(bin); QVERIFY(b.open(QIODevice::WriteOnly)); b.write("hello"); b.close();
+        const QByteArray hex = QCryptographicHash::hash("hello", QCryptographicHash::Md5).toHex();
+        QFile m(md5); QVERIFY(m.open(QIODevice::WriteOnly)); m.write(hex + "  fw.bin\n"); m.close();
+        GithubChecker gc;
+        QVERIFY(gc.verifyFileMd5(bin, md5)["match"].toBool());
+        QFile m2(md5); QVERIFY(m2.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        m2.write("00000000000000000000000000000000\n"); m2.close();
+        QVERIFY(!gc.verifyFileMd5(bin, md5)["match"].toBool());
+        QVERIFY(gc.verifyFileMd5(bin, dir.filePath("missing.md5")).contains("error"));
+    }
+
+    void fileSizeReportsMissing()
+    {
+        GithubChecker gc;
+        QCOMPARE(gc.fileSize("/definitely/not/here"), qint64(-1));
     }
 
     void digestEmptyOrUnknownAlgorithmPasses()
