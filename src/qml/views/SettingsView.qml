@@ -348,7 +348,9 @@ Item {
                                 placeholderText: "owner/repo"
                                 font.pixelSize: 13
                                 Layout.fillWidth: true
-                                onTextEdited: {
+                                // Apply once editing is done, not per keystroke: every
+                                // partial name ("o", "ow", …) would be persisted and queried.
+                                onEditingFinished: {
                                     if (customRadio.checked && text.length > 0)
                                         githubChecker.repoUrl = text
                                 }
@@ -470,7 +472,7 @@ Item {
                             placeholderText: "owner/repo"
                             font.pixelSize: 13
                             Layout.fillWidth: true
-                            onTextEdited: { if (espCustomRadio.checked && text.length > 0) esp32Checker.repoUrl = text }
+                            onEditingFinished: { if (espCustomRadio.checked && text.length > 0) esp32Checker.repoUrl = text }
                             onAccepted: { espCustomRadio.checked = true; if (text.length > 0) esp32Checker.repoUrl = text }
                         }
                     }
@@ -552,7 +554,8 @@ Item {
                         Label { text: "Default FPS:" }
                         SpinBox {
                             id: defaultFps
-                            from: 1; to: 15; value: 10
+                            from: 1; to: 15; value: uiSettings.defaultFps
+                            onValueModified: uiSettings.defaultFps = value
                         }
                     }
 
@@ -578,7 +581,8 @@ Item {
                     CheckBox {
                         id: autoConnectCheck
                         text: "Auto-connect when M1 device is detected"
-                        checked: true
+                        checked: m1device.autoConnect
+                        onToggled: m1device.autoConnect = checked
                     }
 
                     Label {

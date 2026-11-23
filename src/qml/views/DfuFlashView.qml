@@ -26,7 +26,11 @@ Item {
 
     function startFlashLatest() {
         var asset = pickFirmwareAsset()
-        if (!asset) { releaseNotesDialog.open(); return }
+        if (!asset) {
+            view.guidedFlash = false   // nothing to flash: don't leave a guided install armed
+            releaseNotesDialog.open()
+            return
+        }
         view.flashAfterDownload = true
         view.downloading = true
         view.downloadedFilePath = ""
@@ -115,6 +119,23 @@ Item {
         }
     }
 
+    // A different repo makes the release found earlier (and anything downloaded
+    // from it) stale: drop it so "Download and Flash Latest" can't fetch the old
+    // repo's asset while the labels already name the new one.
+    Connections {
+        target: githubChecker
+        function onRepoUrlChanged() {
+            if (view.selectedFilePath === view.downloadedFilePath) {
+                view.selectedFilePath = ""
+                view.selectedFileName = ""
+            }
+            view.releaseInfo = null
+            view.downloadedFilePath = ""
+            view.guidedAwaitRelease = false
+            view.guidedFlash = false
+        }
+    }
+
     // ── GitHub signals (guarded to this view only) ──
     Connections {
         target: githubChecker
@@ -149,6 +170,14 @@ Item {
         function onDownloadProgress(percent) {
             view.downloadPercent = percent
         }
+        function onDownloadError(message) {
+            view.downloading = false
+            view.flashAfterDownload = false
+            view.guidedFlash = false
+            ghStatusLabel.text = "Download failed: " + message
+            ghStatusLabel.color = "#F44336"
+            ghStatusLabel.visible = true
+        }
         function onDownloadComplete(filePath) {
             view.downloading = false
             view.downloadedFilePath = filePath
@@ -165,6 +194,8 @@ Item {
                     flashConfirmDialog.selectedFile = view.selectedFilePath
                     flashConfirmDialog.displayName = view.selectedFileName
                     flashConfirmDialog.open()
+                } else {
+                    view.guidedFlash = false   // no DFU device to flash: abandon the guided run
                 }
             }
         }
@@ -1238,7 +1269,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("dfuOpen", currentFolder)
-            var path = selectedFile.toString().replace(root.filePathFilter, "")
+            var path = root.urlToLocalPath(selectedFile)
             view.selectedFilePath = path
             var parts = path.split(/[/\\]/)
             view.selectedFileName = parts[parts.length - 1]
@@ -1280,6 +1311,9 @@ Item {
                 color: Material.hintTextColor
             }
         }
+
+        // Cancelled: a later manual flash must not be treated as the guided one.
+        onRejected: view.guidedFlash = false
 
         onAccepted: {
             flashStatusLabel.text = ""

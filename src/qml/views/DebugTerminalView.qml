@@ -9,6 +9,10 @@ Item {
 
     property var logEntries: []
 
+    // True while a Boot Snoop capture is running. Drives the button's enabled
+    // state; assigning `enabled` imperatively would destroy its connected binding.
+    property bool snooping: false
+
     // Hidden helper for clipboard copy
     TextEdit {
         id: clipHelper
@@ -24,7 +28,11 @@ Item {
             appendOutput("\n=== ESP32 Boot Output (" + output.length + " bytes) ===")
             appendOutput(output)
             appendOutput("=== End ESP32 Boot Output ===\n")
-            snoopBtn.enabled = true
+            view.snooping = false
+        }
+        function onConnectionChanged(connected) {
+            if (!connected)
+                view.snooping = false
         }
         function onErrorOccurred(message) {
             appendOutput("[ERROR] " + message)
@@ -353,9 +361,9 @@ Item {
                         id: snoopBtn
                         text: "Boot Snoop (~3s)"
                         flat: true; font.pixelSize: 11; padding: 4
-                        enabled: m1device.connected
+                        enabled: m1device.connected && !view.snooping
                         onClicked: {
-                            snoopBtn.enabled = false
+                            view.snooping = true
                             appendOutput("> [ESP32 UART Snoop] Capturing boot output (~3s)...")
                             m1device.sendEspUartSnoop()
                         }

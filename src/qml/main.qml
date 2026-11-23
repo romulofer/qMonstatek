@@ -15,6 +15,12 @@ ApplicationWindow {
     title: "qMonstatek" + (m1device.connected ? " — " + m1device.portName : "")
     
     property string filePathFilter: Qt.platform.os === "windows" ? "file:///" : "file://"
+    // Convert a FileDialog URL to a local path. The URL is percent-encoded, so
+    // "my file.bin" arrives as "my%20file.bin" and must be decoded.
+    function urlToLocalPath(url) {
+        var p = url.toString().replace(filePathFilter, "")
+        try { return decodeURIComponent(p) } catch (e) { return p }
+    }
 
     // ── qMonstatek self-update check (the APP only — firmware is never auto-checked) ──
     property bool appUpdateAvailable: false
@@ -39,6 +45,11 @@ ApplicationWindow {
     // so the user never has to guess which chip needs a flash. 0=pending, 1=behind,
     // 2=current, 3=none/not-tracked/error.
     property bool fwChkActive: false
+    // True only while a check made on behalf of the status-bar banner / unified
+    // check is in flight. The DFU and SWD recovery pages also use githubChecker
+    // (with version 0.0.0.0, where every release is "newer"); their results must
+    // not raise the "M1 firmware update" chip.
+    property bool m1CheckPending: false
     property int  fwChkM1:  0
     property int  fwChkEsp: 0
     function checkAllFirmware() {
@@ -48,6 +59,7 @@ ApplicationWindow {
         // A check-for-updates is the "release" source on both panes — clear any
         // browsed file so each pane shows only the release path.
         fwUpdateView.enterReleaseMode()
+        root.m1CheckPending = true
         githubChecker.checkForUpdates(m1device.fwMajor, m1device.fwMinor,
                                       m1device.fwBuild, m1device.fwRC,
                                       m1device.c3Revision)
@@ -98,16 +110,29 @@ ApplicationWindow {
     Connections {
         target: githubChecker
         function onReleaseFound(info) {
-            root.m1UpdateAvailable = (info.isNewer === true)
-            root.m1UpdateVersion   = info.versionFormatted
+            if (root.m1CheckPending) {
+                root.m1CheckPending = false
+                root.m1UpdateAvailable = (info.isNewer === true)
+                root.m1UpdateVersion   = info.versionFormatted
+            }
             if (root.fwChkActive) { root.fwChkM1 = info.isNewer ? 1 : 2; root.fwRouteMaybe() }
         }
         function onNoUpdateAvailable(msg) {
-            root.m1UpdateAvailable = false
+            if (root.m1CheckPending) {
+                root.m1CheckPending = false
+                root.m1UpdateAvailable = false
+            }
             if (root.fwChkActive) { root.fwChkM1 = 2; root.fwRouteMaybe() }
         }
         function onCheckError(msg) {
+            root.m1CheckPending = false
             if (root.fwChkActive) { root.fwChkM1 = 3; root.fwRouteMaybe() }
+        }
+        // A different repo makes any earlier result (and its banner) stale.
+        function onRepoUrlChanged() {
+            root.m1CheckPending = false
+            root.m1UpdateAvailable = false
+            root.m1UpdateVersion = ""
         }
     }
     Connections {
@@ -146,6 +171,7 @@ ApplicationWindow {
     }
     function checkFirmwareBanners() {
         if (!m1device.connected || !m1device.hasDeviceInfo) return
+        root.m1CheckPending = true
         githubChecker.checkForUpdates(m1device.fwMajor, m1device.fwMinor,
                                       m1device.fwBuild, m1device.fwRC,
                                       m1device.c3Revision)
@@ -669,6 +695,9 @@ ApplicationWindow {
                 // Resume a one-click Update All that was mid-flash when the device
                 // rebooted — return to that tab so the user can re-run it.
                 if (root.updateAllActive) {
+                    // One-shot: once returned, stop yanking the user back here
+                    // on every later device-info update.
+                    root.updateAllActive = false
                     root.showFwChip("all")
                     return
                 }

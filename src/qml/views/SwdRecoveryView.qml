@@ -16,6 +16,13 @@ Item {
     property int downloadPercent: 0
     property var releaseInfo: null
     property bool flashAfterDownload: false   // set by "Download and Flash"
+    // isOpenOcdAvailable() depends on the probe type but has no notify signal, so
+    // bindings calling it directly never re-evaluate when the probe is switched.
+    // Reading probeType here makes this binding follow it.
+    readonly property bool toolAvailable: {
+        var probe = swdRecovery.probeType
+        return swdRecovery.isOpenOcdAvailable()
+    }
     property bool lastOpWasFlash: false        // so the done popup only follows a flash
 
     function basename(p) {
@@ -74,6 +81,21 @@ Item {
         }
     }
 
+    // A different repo makes the release found earlier (and anything downloaded
+    // from it) stale: drop it so "Download and Flash Latest" can't fetch the old
+    // repo's asset while the labels already name the new one.
+    Connections {
+        target: githubChecker
+        function onRepoUrlChanged() {
+            if (view.selectedFilePath === view.downloadedFilePath) {
+                view.selectedFilePath = ""
+                view.selectedFileName = ""
+            }
+            view.releaseInfo = null
+            view.downloadedFilePath = ""
+        }
+    }
+
     // ── GitHub signals (guarded to this view only) ──
     Connections {
         target: githubChecker
@@ -98,6 +120,13 @@ Item {
         function onDownloadProgress(percent) {
             view.downloadPercent = percent
         }
+        function onDownloadError(message) {
+            view.downloading = false
+            view.flashAfterDownload = false
+            swdGhStatusLabel.text = "Download failed: " + message
+            swdGhStatusLabel.color = "#F44336"
+            swdGhStatusLabel.visible = true
+        }
         function onDownloadComplete(filePath) {
             view.downloading = false
             view.downloadedFilePath = filePath
@@ -106,7 +135,7 @@ Item {
             // "Download and Flash": jump to the confirm dialog if the tool is ready.
             if (view.flashAfterDownload) {
                 view.flashAfterDownload = false
-                if (swdRecovery.isOpenOcdAvailable())
+                if (view.toolAvailable)
                     recoveryConfirmDialog.open()
             }
         }
@@ -593,12 +622,12 @@ Item {
 
                         Rectangle {
                             width: 12; height: 12; radius: 6
-                            color: swdRecovery.isOpenOcdAvailable() ? "#4CAF50" : "#F44336"
+                            color: view.toolAvailable ? "#4CAF50" : "#F44336"
                         }
                         Label {
                             property bool isStLink: swdRecovery.probeType === 1
                             property string toolName: isStLink ? "STM32CubeProgrammer" : "OpenOCD"
-                            text: swdRecovery.isOpenOcdAvailable() ? toolName + " found" : toolName + " not found"
+                            text: view.toolAvailable ? toolName + " found" : toolName + " not found"
                             font.pixelSize: 14
                             font.bold: true
                         }
@@ -607,7 +636,7 @@ Item {
 
                     Label {
                         property bool isStLink: swdRecovery.probeType === 1
-                        text: swdRecovery.isOpenOcdAvailable()
+                        text: view.toolAvailable
                               ? swdRecovery.openOcdLocation()
                               : isStLink
                                 ? "Install STM32CubeProgrammer from st.com, then reopen this screen."
@@ -787,7 +816,7 @@ Item {
                         Button {
                             text: "Flash Selected File"
                             highlighted: true
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable() &&
+                            enabled: !swdRecovery.running && view.toolAvailable &&
                                      view.selectedFileName.length > 0
                             onClicked: recoveryConfirmDialog.open()
                         }
@@ -795,7 +824,7 @@ Item {
                         Button {
                             text: view.downloading ? "Downloading…" : "Download and Flash Latest"
                             visible: view.releaseInfo !== null
-                            enabled: !view.downloading && !swdRecovery.running && swdRecovery.isOpenOcdAvailable()
+                            enabled: !view.downloading && !swdRecovery.running && view.toolAvailable
                             onClicked: {
                                 var asset = view.pickFirmwareAsset()
                                 if (!asset) { releaseNotesDialog.open(); return }
@@ -823,7 +852,7 @@ Item {
                     }
 
                     Label {
-                        visible: view.selectedFileName.length > 0 && !swdRecovery.isOpenOcdAvailable()
+                        visible: view.selectedFileName.length > 0 && !view.toolAvailable
                         text: "The required tool for this probe isn't installed yet — see the note above."
                         font.pixelSize: 12
                         color: "#E0A030"
@@ -868,7 +897,7 @@ Item {
                         spacing: 12
                         Button {
                             text: "Swap Bank"
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable()
+                            enabled: !swdRecovery.running && view.toolAvailable
                             onClicked: swapConfirmDialog.open()
                             Layout.preferredWidth: 160
                         }
@@ -885,7 +914,7 @@ Item {
                         spacing: 12
                         Button {
                             text: "Verify Bank 1"
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable() &&
+                            enabled: !swdRecovery.running && view.toolAvailable &&
                                      view.selectedFileName.length > 0
                             onClicked: swdRecovery.verifyBank1(view.selectedFilePath)
                             Layout.preferredWidth: 160
@@ -903,7 +932,7 @@ Item {
                         spacing: 12
                         Button {
                             text: "Verify Bank 2"
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable() &&
+                            enabled: !swdRecovery.running && view.toolAvailable &&
                                      view.selectedFileName.length > 0
                             onClicked: swdRecovery.verifyBank2(view.selectedFilePath)
                             Layout.preferredWidth: 160
@@ -921,7 +950,7 @@ Item {
                         spacing: 12
                         Button {
                             text: "Clone Bank"
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable()
+                            enabled: !swdRecovery.running && view.toolAvailable
                             onClicked: cloneConfirmDialog.open()
                             Layout.preferredWidth: 160
                         }
@@ -938,7 +967,7 @@ Item {
                         spacing: 12
                         Button {
                             text: "Read Status"
-                            enabled: !swdRecovery.running && swdRecovery.isOpenOcdAvailable()
+                            enabled: !swdRecovery.running && view.toolAvailable
                             onClicked: swdRecovery.readStatus()
                             Layout.preferredWidth: 160
                         }
@@ -1169,7 +1198,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("swdOpen", currentFolder)
-            var path = selectedFile.toString().replace(root.filePathFilter, "")
+            var path = root.urlToLocalPath(selectedFile)
             view.selectedFilePath = path
             view.selectedFileName = view.basename(path)
         }

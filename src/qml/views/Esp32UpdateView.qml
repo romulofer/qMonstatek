@@ -99,10 +99,19 @@ Item {
         return null
     }
 
+    // Latest version reported by an explicit ESP info query. Kept as state, not
+    // written into the label's `text`, so the label's binding to
+    // m1device.esp32Version is not destroyed.
+    property string espInfoVersion: ""
+
     Connections {
         target: m1device
         function onEspInfoReceived(version) {
-            espVersionLabel.text = version
+            view.espInfoVersion = version
+        }
+        // Fresh device info (e.g. after a flash) supersedes the earlier query.
+        function onDeviceInfoUpdated() {
+            view.espInfoVersion = ""
         }
         // Guard: the Factory Restore flow also drives startEspUpdate. view.updating
         // is set only when THIS view starts a flash, so ignore signals otherwise
@@ -218,6 +227,9 @@ Item {
         function onDownloadError(message) {
             view.downloading = false
             view.flashAfterDownload = false
+            ghStatusLabel.text = "Download failed: " + message
+            ghStatusLabel.color = "#F44336"
+            ghStatusLabel.visible = true
         }
     }
 
@@ -703,7 +715,8 @@ Item {
                         Label { text: "Version:"; font.pixelSize: 13; color: Material.hintTextColor }
                         Label {
                             id: espVersionLabel
-                            text: m1device.esp32Version.length > 0 ? m1device.esp32Version : "Unknown"
+                            text: view.espInfoVersion.length > 0 ? view.espInfoVersion
+                                  : (m1device.esp32Version.length > 0 ? m1device.esp32Version : "Unknown")
                             font.pixelSize: 13
                         }
                         Item { Layout.fillWidth: true }
@@ -1196,7 +1209,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("espOpen", currentFolder)
-            var path = selectedFile.toString().replace(root.filePathFilter, "")
+            var path = root.urlToLocalPath(selectedFile)
             view.srcMode = "file"
             view.releaseInfo = null
             view.selectedFilePath = path

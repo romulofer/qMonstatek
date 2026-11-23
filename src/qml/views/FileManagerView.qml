@@ -65,6 +65,16 @@ Item {
     property int moveTotal: 0
     property string moveSrcPath: ""
 
+    // Drop any half-finished bulk delete / multi-item move. Without this, the
+    // next unrelated delete or rename completion resumes the leftover queue and
+    // acts on same-named items under whatever folder is open by then.
+    function resetOperationQueues() {
+        bulkDeleteQueue = []
+        bulkDeleteTotal = 0
+        moveQueue = []
+        moveTotal = 0
+    }
+
     function getSelectedEntries() {
         var out = []
         for (var i = 0; i < fileEntries.length; i++)
@@ -118,12 +128,14 @@ Item {
             view.statusText = "ERROR: " + message
             uploadProgress.visible = false
             view.pendingDelete = false
+            view.resetOperationQueues()
         }
         function onErrorOccurred(message) {
             errorLabel.text = "Device error: " + message
             errorLabel.visible = true
             view.statusText = "DEVICE ERROR: " + message
             uploadProgress.visible = false
+            view.resetOperationQueues()
         }
         function onFileUploadProgress(percent) {
             uploadProgress.visible = true
@@ -194,6 +206,8 @@ Item {
             }
         }
         function onConnectionChanged(connected) {
+            if (!connected)
+                view.resetOperationQueues()
             if (connected && view.pendingDelete) {
                 view.statusText = "Reconnected -- checking delete result..."
                 reconnectRefreshTimer.start()
@@ -301,7 +315,8 @@ Item {
             Button {
                 text: m1device.sdMounted ? "Unmount SD" : "Mount SD"
                 enabled: m1device.connected
-                Material.foreground: m1device.sdMounted ? Material.foreground : "#4CAF50"
+                // undefined resets to the theme default; referencing Material.foreground itself is a binding loop
+                Material.foreground: m1device.sdMounted ? undefined : "#4CAF50"
                 onClicked: {
                     if (m1device.sdMounted)
                         m1device.unmountSdCard()
@@ -566,7 +581,7 @@ Item {
         onAccepted: {
             uiSettings.setDialogFolder("fileUpload", currentFolder)
             if (selectedFiles.length === 1) {
-                var localPath = selectedFiles[0].toString().replace(root.filePathFilter, "")
+                var localPath = root.urlToLocalPath(selectedFiles[0])
                 var fileName = localPath.split("/").pop().split("\\").pop()
                 m1device.uploadFile(localPath, buildRemotePath(fileName))
             } else if (selectedFiles.length > 1) {
@@ -659,6 +674,7 @@ Item {
         onAccepted: {
             var nn = renameField.text.trim()
             if (nn.length > 0 && nn !== renameDialog.oldName) {
+                view.moveQueue = []
                 view.moveTotal = 0   // single rename, not a move
                 view.statusText = "Renaming to " + nn + "..."
                 m1device.renameFile(buildRemotePath(renameDialog.oldName), buildRemotePath(nn))
@@ -713,7 +729,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("fileDownload", currentFolder)
-            var localPath = selectedFile.toString().replace(root.filePathFilter, "")
+            var localPath = root.urlToLocalPath(selectedFile)
             m1device.downloadFile(remotePath, localPath)
         }
     }

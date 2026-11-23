@@ -138,6 +138,9 @@ ScrollView {
     function rebootDevice() {
         m1device.reboot()
         view.busy = false; view.phase = ""; view.stalled = false
+        // The user chose to abandon the run: don't pull them back to this tab
+        // on every device-info update after the reboot.
+        view.updateInFlight(false)
         view.statusMsg = "Rebooting the device… it'll reconnect in a moment — then run it again."
     }
 

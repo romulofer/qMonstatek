@@ -141,6 +141,21 @@ Item {
         }
     }
 
+    // A different repo makes the release found earlier (and anything downloaded
+    // from it) stale: drop it so "Download and Flash Latest" can't fetch the old
+    // repo's asset while the labels already name the new one.
+    Connections {
+        target: githubChecker
+        function onRepoUrlChanged() {
+            if (view.selectedFilePath === view.downloadedFilePath) {
+                view.selectedFilePath = ""
+                view.selectedFileName = ""
+            }
+            view.releaseInfo = null
+            view.downloadedFilePath = ""
+        }
+    }
+
     // ── GitHub signals ──
     Connections {
         target: githubChecker
@@ -167,6 +182,15 @@ Item {
         }
         function onDownloadProgress(percent) {
             view.downloadPercent = percent
+        }
+        function onDownloadError(message) {
+            // Without this the page stays in "Downloading…" with every download
+            // and check button disabled until the app is restarted.
+            view.downloading = false
+            view.flashAfterDownload = false
+            ghStatusLabel.text = "Download failed: " + message
+            ghStatusLabel.color = "#F44336"
+            ghStatusLabel.visible = true
         }
         function onDownloadComplete(filePath) {
             view.downloading = false
@@ -975,7 +999,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("firmwareOpen", currentFolder)
-            var path = selectedFile.toString().replace(root.filePathFilter, "")
+            var path = root.urlToLocalPath(selectedFile)
             view.srcMode = "file"
             view.releaseInfo = null
             view.selectedFilePath = path
@@ -997,7 +1021,7 @@ Item {
         }
         onAccepted: {
             uiSettings.setDialogFolder("firmwareSave", currentFolder)
-            var dest = selectedFile.toString().replace(root.filePathFilter, "")
+            var dest = root.urlToLocalPath(selectedFile)
             githubChecker.saveFileTo(view.downloadedFilePath, dest)
         }
     }

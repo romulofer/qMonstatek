@@ -34,7 +34,7 @@ Item {
             Label { text: "FPS:" }
             SpinBox {
                 id: fpsSpinner
-                from: 1; to: 15; value: 10
+                from: 1; to: 15; value: uiSettings.defaultFps
                 editable: true
             }
 
