@@ -748,10 +748,14 @@ void SwdRecovery::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatu
 void SwdRecovery::cancel()
 {
     if (m_process) {
-        m_process->kill();
-        m_process->waitForFinished(2000);
-        m_process->deleteLater();
+        // Detach first: waitForFinished() fires finished() synchronously, and
+        // the finished handler would null the member before deleteLater() below.
+        QProcess *proc = m_process;
         m_process = nullptr;
+        proc->disconnect(this);
+        proc->kill();
+        proc->waitForFinished(2000);
+        proc->deleteLater();
     }
 
     if (m_running) {

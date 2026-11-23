@@ -96,7 +96,11 @@ int main(int argc, char *argv[])
     // Push-render item for the screen mirror (replaces the image-provider pull).
     qmlRegisterType<ScreenCanvas>("Monstatek.Backend", 1, 0, "ScreenCanvas");
 
-    // Create backend objects
+    // Create backend objects. The log model comes first so it is destroyed last:
+    // the message handler feeds it, and other objects still log from their
+    // destructors (and from worker threads) during shutdown.
+    LogModel logModel;
+    setGlobalLogModel(&logModel);
     M1Device device;
     device.setPreferredSerialPort(requestedPort);
     GithubChecker githubChecker;
@@ -114,8 +118,6 @@ int main(int argc, char *argv[])
     SwdRecovery swdRecovery;
     MdnsDiscovery mdnsDiscovery;
     device.setMdnsDiscovery(&mdnsDiscovery);   // WiFi auto-reconnect re-resolve
-    LogModel logModel;
-    setGlobalLogModel(&logModel);
     UiSettings uiSettings;
 
     // Set up QML engine

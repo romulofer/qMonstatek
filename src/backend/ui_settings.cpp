@@ -77,3 +77,19 @@ void UiSettings::setGuidedEspPending(bool v)
     s.setValue(QStringLiteral("setup/guidedEspPending"), v);
     emit guidedEspPendingChanged();
 }
+
+int UiSettings::defaultFps() const
+{
+    QSettings s;
+    return qBound(1, s.value(QStringLiteral("screen/defaultFps"), 10).toInt(), 15);
+}
+
+void UiSettings::setDefaultFps(int fps)
+{
+    fps = qBound(1, fps, 15);
+    if (fps == defaultFps())
+        return;
+    QSettings s;
+    s.setValue(QStringLiteral("screen/defaultFps"), fps);
+    emit defaultFpsChanged();
+}

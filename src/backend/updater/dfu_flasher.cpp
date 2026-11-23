@@ -82,10 +82,14 @@ void DfuFlasher::stopScanning()
 {
     m_scanTimer.stop();
     if (m_scanProcess) {
-        m_scanProcess->kill();
-        m_scanProcess->waitForFinished(1000);
-        m_scanProcess->deleteLater();
+        // Detach first: waitForFinished() fires finished() synchronously, and
+        // onScanFinished() would null the member before deleteLater() below.
+        QProcess *proc = m_scanProcess;
         m_scanProcess = nullptr;
+        proc->disconnect(this);
+        proc->kill();
+        proc->waitForFinished(1000);
+        proc->deleteLater();
     }
     if (m_scanning) {
         m_scanning = false;
@@ -502,10 +506,14 @@ void DfuFlasher::onSwapBankFinished(int exitCode, QProcess::ExitStatus exitStatu
 void DfuFlasher::cancel()
 {
     if (m_flashProcess) {
-        m_flashProcess->kill();
-        m_flashProcess->waitForFinished(2000);
-        m_flashProcess->deleteLater();
+        // Detach first: waitForFinished() fires finished() synchronously, and
+        // onFlashFinished() would null the member before deleteLater() below.
+        QProcess *proc = m_flashProcess;
         m_flashProcess = nullptr;
+        proc->disconnect(this);
+        proc->kill();
+        proc->waitForFinished(2000);
+        proc->deleteLater();
     }
 
     if (m_flashing) {

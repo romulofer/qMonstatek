@@ -41,6 +41,7 @@ M1Device::M1Device(QObject *parent)
         if (s.value(QStringLiteral("logging/enabled"), false).toBool())
             setLogToFile(true);   // reopens the file so capture resumes at launch
         m_deviceLogVerbose = s.value(QStringLiteral("logging/deviceVerbose"), false).toBool();
+        m_autoConnect = s.value(QStringLiteral("connection/autoConnect"), true).toBool();
     }
 
     // Wire codec → frame handler
@@ -159,13 +160,38 @@ M1Device::M1Device(QObject *parent)
             qWarning() << "File upload timeout";
             m_fileUploadState = FileUploadState::Idle;
             m_fileUploadData.clear();
+            abortUploadQueue();
             resumeKeepaliveIfIdle();
             emit fileOperationError("Upload timed out waiting for device response");
         }
     });
 
-    // Start device scanning
-    m_discovery.startScanning();
+    // Start device scanning. Deferred to the event loop so the caller can set
+    // the preferred serial port (--port) first: the first scan reports already
+    // enumerated devices synchronously, and would otherwise auto-connect to
+    // whichever M1 is listed first.
+    QTimer::singleShot(0, this, [this]() { m_discovery.startScanning(); });
+}
+
+M1Device::~M1Device()
+{
+    // Members are destroyed in reverse declaration order, and the transports are
+    // declared before the codec, timers and state their slots touch. Detach
+    // them now so a close() from a transport destructor cannot call back into
+    // a half-destroyed M1Device.
+    m_pingTimer.stop();
+    m_serialReconnectTimer.stop();
+    m_wifiReconnectTimer.stop();
+    m_fwUpdateTimeout.stop();
+    m_espUpdateTimeout.stop();
+    m_fileUploadTimeout.stop();
+    m_discovery.stopScanning();
+    QObject::disconnect(&m_discovery, nullptr, this, nullptr);
+    QObject::disconnect(&m_serialTransport, nullptr, this, nullptr);
+    if (m_wifiTransport)
+        QObject::disconnect(m_wifiTransport, nullptr, this, nullptr);
+    if (m_mdns)
+        QObject::disconnect(m_mdns, nullptr, this, nullptr);
 }
 
 /* ──────────── Connection ──────────── */
@@ -175,6 +201,9 @@ bool M1Device::connectToDevice(const QString &portName)
     // Ensure serial transport is active
     if (m_transport != &m_serialTransport)
         setTransport(&m_serialTransport);
+    // A WiFi attempt that failed asynchronously leaves this armed; the serial
+    // open below starts its own session, so it must not start a second one.
+    m_pendingSessionStart = false;
 
     if (!m_transport->open(portName)) {
         return false;
@@ -363,11 +392,27 @@ void M1Device::startSession()
     m_pingTimer.start(3000);
 }
 
+void M1Device::setAutoConnect(bool on)
+{
+    if (on == m_autoConnect)
+        return;
+    m_autoConnect = on;
+    QSettings().setValue(QStringLiteral("connection/autoConnect"), on);
+    if (!canAutoConnect()) {
+        // Turning it off also cancels a retry that is already scheduled.
+        m_serialReconnectTimer.stop();
+        m_serialReconnectPort.clear();
+        m_serialReconnectAttempts = 0;
+    }
+    emit autoConnectChanged(on);
+}
+
 void M1Device::setPreferredSerialPort(const QString &portName)
 {
     m_preferredSerialPort = portName.trimmed();
     if (m_preferredSerialPort.isEmpty() || isConnected())
         return;
+    m_portRequested = true;
 
     // Studio starts qMonstatek before it exits, so Windows can briefly retain
     // the requested COM handle. Seed the normal bounded reconnect path instead
@@ -739,6 +784,19 @@ void M1Device::startUploadQueue()
     auto &item = m_uploadQueue[0];
     emit multiUploadProgress(1, m_uploadQueue.size(), QFileInfo(item.localPath).fileName());
     uploadFile(item.localPath, item.remotePath);
+    // uploadFile() reports early failures (unreadable/empty file, busy) without
+    // starting a transfer; nothing would ever advance the queue, so drop it.
+    if (m_fileUploadState == FileUploadState::Idle)
+        abortUploadQueue();
+}
+
+void M1Device::abortUploadQueue()
+{
+    m_uploadQueue.clear();
+    m_uploadQueueIndex = -1;
+    m_mkdirQueue.clear();
+    m_mkdirQueueIndex = -1;
+    resumeKeepaliveIfIdle();
 }
 
 void M1Device::advanceUploadQueue()
@@ -748,6 +806,7 @@ void M1Device::advanceUploadQueue()
         int total = m_uploadQueue.size();
         m_uploadQueue.clear();
         m_uploadQueueIndex = -1;
+        resumeKeepaliveIfIdle();
         emit multiUploadComplete(total);
         return;
     }
@@ -755,6 +814,8 @@ void M1Device::advanceUploadQueue()
     emit multiUploadProgress(m_uploadQueueIndex + 1, m_uploadQueue.size(),
                              QFileInfo(item.localPath).fileName());
     uploadFile(item.localPath, item.remotePath);
+    if (m_fileUploadState == FileUploadState::Idle)
+        abortUploadQueue();
 }
 
 void M1Device::advanceMkdirQueue()
@@ -1615,6 +1676,7 @@ void M1Device::handleNack(const rpc::Frame &frame)
     case rpc::ERR_BUSY:            errMsg = "Device busy"; break;
     case rpc::ERR_SD_NOT_READY:    errMsg = "SD card not ready"; break;
     case rpc::ERR_FILE_NOT_FOUND:  errMsg = "File not found"; break;
+    case rpc::ERR_FILE_EXISTS:     errMsg = "File or folder already exists"; break;
     case rpc::ERR_DIR_NOT_EMPTY:   errMsg = "Folder not empty"; break;
     case rpc::ERR_FLASH_ERROR:     errMsg = "Flash error"; break;
     case rpc::ERR_CRC_MISMATCH:    errMsg = "CRC mismatch"; break;
@@ -1709,17 +1771,29 @@ void M1Device::handleNack(const rpc::Frame &frame)
         return;
     }
 
+    // Folder upload is creating directories: an already-existing directory is
+    // fine (upload merges into it); any other failure aborts the whole queue so
+    // a later unrelated mkdir ACK cannot resume stale entries.
+    if (m_mkdirQueueIndex >= 0 && m_pendingFileCmd == rpc::CMD_FILE_MKDIR) {
+        m_pendingFileCmd = 0;
+        if (errCode == rpc::ERR_FILE_EXISTS) {
+            qDebug() << "Folder upload: directory already exists, continuing";
+            advanceMkdirQueue();
+            return;
+        }
+        qWarning() << "Folder upload aborted due to mkdir NACK:" << errMsg;
+        abortUploadQueue();
+        emit fileOperationError("Upload failed: " + errMsg);
+        return;
+    }
+
     // If file upload is in progress, abort it (and the queue)
     if (m_fileUploadState != FileUploadState::Idle) {
         qWarning() << "File upload aborted due to NACK:" << errMsg;
         m_fileUploadTimeout.stop();
         m_fileUploadState = FileUploadState::Idle;
         m_fileUploadData.clear();
-        resumeKeepaliveIfIdle();
-        m_uploadQueue.clear();
-        m_uploadQueueIndex = -1;
-        m_mkdirQueue.clear();
-        m_mkdirQueueIndex = -1;
+        abortUploadQueue();
         emit fileOperationError("Upload failed: " + errMsg);
         return;
     }
@@ -1772,6 +1846,14 @@ void M1Device::onTransportConnected(bool connected)
         m_deviceInfo = DeviceInfo{};
         m_screenStreaming = false;
         m_bankSwapPending = false;
+        m_pendingFileCmd = 0;
+        m_fileDownloadBuf.clear();
+        if (m_bankErasePending) {
+            // The ACK that would clear this will never arrive on the old link;
+            // left set it blocks every later transfer and eats the next ACK.
+            m_bankErasePending = false;
+            emit bankEraseError("Device disconnected during bank erase");
+        }
         m_fwUpdateTimeout.stop();
         if (m_fwUpdateState != FwUpdateState::Idle) {
             m_fwUpdateState = FwUpdateState::Idle;
@@ -1828,7 +1910,7 @@ void M1Device::onTransportConnected(bool connected)
 
 void M1Device::onDeviceFound(const QString &portName)
 {
-    if (!m_autoConnect || isConnected())
+    if (!canAutoConnect() || isConnected())
         return;
 
     if (!m_preferredSerialPort.isEmpty() && portName != m_preferredSerialPort)
@@ -1850,7 +1932,7 @@ void M1Device::onDeviceFound(const QString &portName)
 
 void M1Device::scheduleSerialReconnect(const QString &portName, int delayMs)
 {
-    if (!m_autoConnect || isConnected() || portName.isEmpty())
+    if (!canAutoConnect() || isConnected() || portName.isEmpty())
         return;
 
     m_serialReconnectPort = portName;
@@ -1860,7 +1942,7 @@ void M1Device::scheduleSerialReconnect(const QString &portName, int delayMs)
 
 void M1Device::trySerialReconnect()
 {
-    if (!m_autoConnect || isConnected() || m_serialReconnectPort.isEmpty())
+    if (!canAutoConnect() || isConnected() || m_serialReconnectPort.isEmpty())
         return;
 
     if (m_serialReconnectAttempts >= SERIAL_RECONNECT_MAX) {

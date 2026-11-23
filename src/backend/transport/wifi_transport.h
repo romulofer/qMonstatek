@@ -66,6 +66,7 @@ private:
     NetworkWorker *m_worker = nullptr;
     QString        m_target;
     bool           m_connected = false;
+    bool           m_connecting = false;   // an open() attempt is in flight
     quint16        m_udpPort = 0;
 };
 

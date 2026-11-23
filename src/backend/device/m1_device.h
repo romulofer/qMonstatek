@@ -63,10 +63,12 @@ class M1Device : public QObject {
     Q_PROPERTY(bool logToFile READ logToFile WRITE setLogToFile NOTIFY logToFileChanged)
     Q_PROPERTY(QString logFilePath READ logFilePath WRITE setLogFilePath NOTIFY logFilePathChanged)
     Q_PROPERTY(bool deviceLogVerbose READ deviceLogVerbose WRITE setDeviceLogVerbose NOTIFY deviceLogVerboseChanged)
+    Q_PROPERTY(bool autoConnect READ autoConnect WRITE setAutoConnect NOTIFY autoConnectChanged)
     Q_PROPERTY(bool legacyCompatMode READ legacyCompatMode NOTIFY legacyCompatModeChanged)
 
 public:
     explicit M1Device(QObject *parent = nullptr);
+    ~M1Device() override;
 
     /* Connection */
     Q_INVOKABLE bool connectToDevice(const QString &portName);
@@ -91,6 +93,8 @@ public:
      * UART isn't flooded with m1link/RPC INFO traces; ON raises it to INFO for a
      * capture. Persisted, and re-sent to the device on each (re)connect. */
     bool deviceLogVerbose() const { return m_deviceLogVerbose; }
+    bool autoConnect() const { return m_autoConnect; }
+    void setAutoConnect(bool on);
     Q_INVOKABLE void setDeviceLogVerbose(bool on);
 
     /* True when the connected device speaks the legacy (pre-fix) CRC — i.e. its
@@ -191,6 +195,7 @@ signals:
     void logToFileChanged(bool enabled);
     void logFilePathChanged(QString path);
     void deviceLogVerboseChanged(bool on);
+    void autoConnectChanged(bool on);
     void legacyCompatModeChanged(bool legacy);
     void legacyFirmwareDetected();   // one-shot: old firmware seen, prompt to update
 
@@ -294,6 +299,8 @@ private:
     int      m_screenFps       = 5;
     int      m_screenFrameCount = 0;
     bool     m_autoConnect = true;
+    bool     m_portRequested = false;   // --port given: explicit, so it overrides m_autoConnect
+    bool     canAutoConnect() const { return m_autoConnect || m_portRequested; }
     QString  m_preferredSerialPort;
     bool     m_userDisconnecting = false;
     QTimer   m_pingTimer;
@@ -353,6 +360,7 @@ private:
     void startUploadQueue();
     void advanceUploadQueue();
     void advanceMkdirQueue();
+    void abortUploadQueue();      // drop both queues and let the keepalive resume
 
     /* SD mount state */
     bool m_sdMounted = true;

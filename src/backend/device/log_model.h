@@ -19,6 +19,7 @@ public:
     enum Roles { MessageRole = Qt::UserRole + 1 };
 
     explicit LogModel(QObject *parent = nullptr);
+    ~LogModel() override;
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

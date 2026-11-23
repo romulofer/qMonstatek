@@ -136,17 +136,19 @@ void resetCrcDialect()
 
 bool crc16ValidateRx(const uint8_t *data, size_t length, uint16_t received)
 {
-    if (crc16_ccitt(data, length) == received) {
+    const bool correct = (crc16_ccitt(data, length) == received);
+    const bool legacy  = (crc16_ccitt_legacy(data, length) == received);
+
+    // The two tables differ in only some entries, so a short frame can validate
+    // under both. Such a frame says nothing about the peer's dialect: latching
+    // on it would lock "Correct" for a legacy device and drop every later
+    // frame that touches a differing table entry. Latch only on an
+    // unambiguous match.
+    if (correct != legacy) {
         if (!g_dialectLocked.exchange(true, std::memory_order_relaxed))
-            setTxCrcDialect(CrcDialect::Correct);
-        return true;
+            setTxCrcDialect(correct ? CrcDialect::Correct : CrcDialect::Legacy);
     }
-    if (crc16_ccitt_legacy(data, length) == received) {
-        if (!g_dialectLocked.exchange(true, std::memory_order_relaxed))
-            setTxCrcDialect(CrcDialect::Legacy);
-        return true;
-    }
-    return false;
+    return correct || legacy;
 }
 
 } // namespace rpc

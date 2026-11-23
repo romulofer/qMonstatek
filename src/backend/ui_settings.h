@@ -26,6 +26,8 @@ class UiSettings : public QObject {
      * set (across runs) until the matching ESP firmware is installed. Drives the
      * "Finish setup — install ESP firmware" prompt. */
     Q_PROPERTY(bool guidedEspPending READ guidedEspPending WRITE setGuidedEspPending NOTIFY guidedEspPendingChanged)
+    /* Default frame rate (1-15) for the screen-mirror stream spinners. Persisted. */
+    Q_PROPERTY(int defaultFps READ defaultFps WRITE setDefaultFps NOTIFY defaultFpsChanged)
 public:
     explicit UiSettings(QObject *parent = nullptr) : QObject(parent) {}
 
@@ -42,6 +44,9 @@ public:
     QString accent() const;
     void setAccent(const QString &a);
 
+    int defaultFps() const;
+    void setDefaultFps(int fps);
+
     bool guidedEspPending() const;
     void setGuidedEspPending(bool v);
 
@@ -50,4 +55,5 @@ signals:
     void caseColorChanged();
     void accentChanged();
     void guidedEspPendingChanged();
+    void defaultFpsChanged();
 };

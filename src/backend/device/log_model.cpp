@@ -4,6 +4,7 @@
 
 #include "log_model.h"
 #include <QDateTime>
+#include <QThread>
 
 static LogModel *s_globalLogModel = nullptr;
 
@@ -13,6 +14,13 @@ void setGlobalLogModel(LogModel *model) { s_globalLogModel = model; }
 LogModel::LogModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+}
+
+LogModel::~LogModel()
+{
+    // The Qt message handler keeps a raw pointer to us; never leave it dangling.
+    if (s_globalLogModel == this)
+        s_globalLogModel = nullptr;
 }
 
 int LogModel::rowCount(const QModelIndex &parent) const
@@ -54,6 +62,13 @@ QString LogModel::fullText() const
 
 void LogModel::append(const QString &line)
 {
+    // The Qt message handler also runs on worker threads (e.g. the WiFi
+    // NetworkWorker). Model changes and signals must happen on our own thread.
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, [this, line]() { append(line); },
+                                  Qt::QueuedConnection);
+        return;
+    }
     {
         QMutexLocker lock(&m_mutex);
         if (m_lines.size() >= MAX_LINES) {

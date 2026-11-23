@@ -55,6 +55,7 @@ bool WifiTransport::open(const QString &target)
     }
 
     m_target = target;
+    m_connecting = true;
     qInfo() << "WiFi: connecting (async) to" << host << ":" << port;
     emit requestConnect(host, port);   // non-blocking; result via connectionChanged()
     return true;
@@ -76,6 +77,7 @@ void WifiTransport::disarmScreen() { emit requestDisarm(); }
 
 void WifiTransport::onWorkerConnected()
 {
+    m_connecting = false;
     m_connected = true;
     qInfo() << "WiFi: connected to" << m_target;
     emit connectionChanged(true);
@@ -85,7 +87,15 @@ void WifiTransport::onWorkerDisconnected()
 {
     if (m_connected) {
         m_connected = false;
+        m_connecting = false;
         qInfo() << "WiFi: disconnected from" << m_target;
+        emit connectionChanged(false);
+    } else if (m_connecting) {
+        // The attempt itself failed (refused, timeout, unreachable). Report it
+        // so M1Device can re-arm its reconnect backoff; otherwise a single
+        // failed retry would end auto-reconnect for good.
+        m_connecting = false;
+        qInfo() << "WiFi: connect attempt to" << m_target << "failed";
         emit connectionChanged(false);
     }
 }
